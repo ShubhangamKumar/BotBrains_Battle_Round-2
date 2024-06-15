@@ -1,0 +1,107 @@
+Certainly! Below is the enhanced version of the given code with the requested modifications:
+  Custom Threshold Setting with Potentiometer: Added a potentiometer to set the soil moisture threshold.
+  Feedback Mechanism: Added a buzzer and an LED to provide feedback.
+  Power Efficiency with Sleep Mode: Integrated a sleep mode feature with a button to wake up the system.
+
+Enhanced Code (cpp)
+
+#include <Servo.h>
+#include <avr/sleep.h>
+
+const int soilMoisturePin = A0;
+const int potentiometerPin = A1;
+const int pumpPin = 9;
+const int buzzerPin = 8;
+const int ledPin = 7;
+const int buttonPin = 2;
+Servo servoMotor;
+
+volatile bool wakeUpFlag = false;
+
+void wakeUp() {
+  wakeUpFlag = true;
+}
+
+void setup() {
+  pinMode(soilMoisturePin, INPUT);
+  pinMode(potentiometerPin, INPUT);
+  pinMode(pumpPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  attachInterrupt(digitalPinToInterrupt(buttonPin), wakeUp, FALLING);
+
+  servoMotor.attach(10);
+  Serial.begin(9600);
+}
+
+void loop() {
+  if (!wakeUpFlag) {
+    goToSleep();
+  }
+
+  int soilMoisture = analogRead(soilMoisturePin);
+  int potentiometerValue = analogRead(potentiometerPin);
+  int threshold = map(potentiometerValue, 0, 1023, 0, 1023);
+
+  Serial.print("Soil Moisture: ");
+  Serial.print(soilMoisture);
+  Serial.print(" - Threshold: ");
+  Serial.println(threshold);
+
+  if (soilMoisture < threshold) {
+    startWatering();
+  } else {
+    stopWatering();
+  }
+
+  delay(1000); // Check soil moisture every second
+}
+
+void startWatering() {
+  digitalWrite(pumpPin, HIGH);
+  servoMotor.write(90);
+  giveFeedback();
+  delay(5000); // Watering duration
+  stopWatering();
+}
+
+void stopWatering() {
+  digitalWrite(pumpPin, LOW);
+  servoMotor.write(0);
+  giveFeedback();
+}
+
+void giveFeedback() {
+  digitalWrite(buzzerPin, HIGH);
+  digitalWrite(ledPin, HIGH);
+  delay(100); // Beep and blink duration
+  digitalWrite(buzzerPin, LOW);
+  digitalWrite(ledPin, LOW);
+}
+
+void goToSleep() {
+  Serial.println("Going to sleep...");
+  delay(100); // Ensure serial message is sent before sleeping
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  sleep_enable();
+  sleep_cpu();
+  sleep_disable();
+  Serial.println("Woke up!");
+  wakeUpFlag = false;
+}
+
+Explanation of the Modifications
+ 1.)Custom Threshold Setting with Potentiometer:
+    i.Added potentiometerPin to read the potentiometer value.
+    ii.Mapped the potentiometer value to a range suitable for soil moisture threshold.
+
+2.)Feedback Mechanism:
+   i.Added buzzerPin and ledPin to provide feedback when watering starts and stops.
+   ii.The giveFeedback function triggers the buzzer and LED.
+
+3.)Power Efficiency with Sleep Mode:
+   i.Added buttonPin to allow manual activation of the system.
+   ii.Used attachInterrupt to wake the system when the button is pressed.
+   iii.goToSleep function puts the system in power-down sleep mode to conserve power.
